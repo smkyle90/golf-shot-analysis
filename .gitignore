@@ -1,0 +1,35 @@
+# Compiled
+*.pyc
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+*.ipynb
+*.txt
+*.png
+*.mov
+*.trc
+*.log
+*.mp4
+*.zip
+*.json
+*.mpg
+
+# Pytest Artifacts
+.pytest_cache
+.coverage
+htmlcov
+
+# Folders and directories
+__pycache__
+
+# Work folder for application.
+# Store all dev files here.
+# Anything in this file will NOT be uploaded to the git repo, and ignored in the Docker build.
+workspace/*
+
+# Do not ignore
+!requirements.txt
+!.placeholder
