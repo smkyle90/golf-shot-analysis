@@ -36,3 +36,4 @@ workspace/*
 # Do not ignore
 !requirements.txt
 !.placeholder
+!main.ipynb
