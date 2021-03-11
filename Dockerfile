@@ -1,16 +1,8 @@
 FROM python:3.8.7-slim-buster
 
-# Non-root user for security purposes.
-# Static GID/UID
-RUN addgroup --gid 10001 --system app \
-	&& adduser --uid 10000 --system --group app --home /home/app
-
-# Install system packages that are considered standard for all Python applications
-# Tini allows us to avoid several Docker edge cases, see https://github.com/krallin/tini
 RUN apt-get update && apt-get -y --no-install-recommends install \
 	# software-properties-common \
     # build-essential \
-	tini \
     && apt-get -y autoremove \
     && apt-get clean autoclean
 
@@ -34,11 +26,9 @@ COPY . /app/
 # Set the working directory to /app
 WORKDIR /app
 
-# Use an entrypoint to use container as an executable / specify the default container command
-ENTRYPOINT ["/usr/bin/tini", "--", "python3"]
+RUN apt-get update && apt-get install -y python3-tk
+RUN pip install jupyter
+RUN pip install voila
 
-# Use the non-root user to run our application
-USER app
-
-# Default arguments for your app 
-CMD ["/app/main.py", "/app/configs/config.yml"]
+# Default arguments for your app
+CMD ["/bin/bash"]
