@@ -19,7 +19,7 @@ _Contents:_
 
 This repository uses PGA Shotlink Data to infer the ideal locations to hit golf shots on the PGA Tour. A user can select a tournament, and for each hole, analyse the shot distribution on a given hole that lead to a sub-, even-, or over-par score for all pin locations.
 
-The data comes from a test set of PGA Shotlink data, from the GitHub repo [pga-golf-data](https://github.com/brendansudol/pga-golf-data/tree/master/data/tournaments/002/2015Docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/). This is added as a submodule in `third-party`. Ensure to initialise the submodules appropriately.
+The data comes from a test set of PGA Shotlink data, from the GitHub repo [pga-golf-data](https://github.com/brendansudol/pga-golf-data/). This is added as a submodule in `third-party`. Ensure to initialise the submodules appropriately.
 
 ## Installation & Usage
 
