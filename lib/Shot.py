@@ -2,10 +2,12 @@
 
 
 class Shot:
-    def __init__(self, t_round, hole, stroke, x, y, prox, score=0):
+    def __init__(self, player, year, t_round, hole, stroke, x, y, prox, score=0):
         """Defines a shot from ShotLink data.
 
         Args:
+            player
+            year
             t_round (int): tournament round the shot is in
             hole (int): hole the shot is on
             stroke (int): stroke number
@@ -15,6 +17,8 @@ class Shot:
             score (int): final score on hole (for categorization)
 
         """
+        self.player = player
+        self.year = year
         self.t_round = int(t_round)
         self.hole = int(hole)
         self.stroke = int(stroke)

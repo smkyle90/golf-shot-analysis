@@ -17,29 +17,11 @@ _Contents:_
 
 ## Background
 
-This repository has been developed as a common starting point for application development. It has a standard structure and common set of tooling to ensure accuracy and consistency across all applications.
+This repository uses PGA Shotlink Data to infer the ideal locations to hit golf shots on the PGA Tour. A user can select a tournament, and for each hole, analyse the shot distribution on a given hole that lead to a sub-, even-, or over-par score for all pin locations.
 
-Naming conventions for repositories:
-
-| Valid | Invalid |
-|---|---|
-|`-`, Capital Letters, Lowercase Letters | `_`
-|---|---|
-|A-Legitimate-Repository | an_illegitemate_repository
+The data comes from a test set of PGA Shotlink data, from the GitHub repo [pga-golf-data](https://github.com/brendansudol/pga-golf-data/tree/master/data/tournaments/002/2015Docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/). This is added as a submodule in `third-party`. Ensure to initialise the submodules appropriately.
 
 ## Installation & Usage
-
-1. From this repository, click the "Use this template" button.
-2. Name your repository appropriately (see [Background](#Background)).
-3. Clone the new repository and navigate to its directory.
-4. Run the starup script `start_new_repo.sh`, which will:
-  	- initialise the submodule,
-  	- push the modified repository to Github, then
-  	- delete the script.
-
-Once this is done, you are ready to start development of your new application.
-
-Ensure you update the Background and Installation & Usage sections so that they relate to your application.
 
 ## Running
 
@@ -51,8 +33,8 @@ The content of the `Makefile` should only be modified if the standard behaviour 
 
 | Command | Dependencies | Action | Image Tag (local and remote)
 ----------------------|---|---|---
-`make publish` | `build upload` | Builds and uploads image | Git commit's tag, otherwise `latest`
-`make publish TAG=custom_tag` | `build upload` | Builds and uploads image | `custom_tag`
+`make run` | `run` | Runs image | Git commit's tag, otherwise `latest`
+`make build` | `build` | Builds image | `custom_tag`
 
 ### Scripts
 
@@ -64,8 +46,15 @@ The `scripts` folder must maintain the following, which are indirectly run from 
 | upload.sh | NAME TAG | Application image is uploaded to container repository, tagged with input args |
 | run.sh    | NAME TAG | Application image is run locally |
 
+### Development or Production
+
+For now, use the docker-compose file to spin up the application and the nginx server. Run `docker-compose up --build`. The application is available at `localhost`, `127.0.0.1` on the local machine, or the IP address of the machine, if accessed from another computer on the network. `nginx.conf` needs to be configured appropriately.
+
+For development, simply run `make run` and the development environment will start.
+
 ## Contributing
-The guidelines for contributing are laid out here. All members of the team have write access.
+The guidelines for contributing are laid out here.
+
 
 ### Development Environment
 - Install [Docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/) for creating a nice virtual container to run in.

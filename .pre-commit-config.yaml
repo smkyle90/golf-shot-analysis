@@ -26,6 +26,14 @@ repos:
     -   id: black
         name: Black
 
+-   repo: https://github.com/mwouts/jupytext
+    rev: v1.11.0  # CURRENT_TAG/COMMIT_HASH
+    hooks:
+    -   id: jupytext
+        args: [--sync, --pipe, black]
+        additional_dependencies:
+        -   black==19.10b0 # Matches hook
+
 -   repo: https://gitlab.com/pycqa/flake8
     rev: 3.8.3
     hooks:

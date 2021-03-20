@@ -8,6 +8,8 @@ import pytest
 def test_Shot():
     from lib import Shot
 
+    year = 2015
+    pid = 1234
     t_round = 1
     hole = 1
     stroke = 2
@@ -16,8 +18,10 @@ def test_Shot():
     prox = 32.5
     score = 1
 
-    s = Shot(t_round, hole, stroke, x, y, prox)
+    s = Shot(pid, year, t_round, hole, stroke, x, y, prox)
 
+    assert s.year == year
+    assert s.player == pid
     assert s.t_round == t_round
     assert s.hole == hole
     assert s.stroke == stroke
@@ -26,5 +30,5 @@ def test_Shot():
     assert s.prox == prox
     assert not s.score
 
-    s = Shot(t_round, hole, stroke, x, y, prox, score)
+    s = Shot(pid, year, t_round, hole, stroke, x, y, prox, score)
     assert s.score == score

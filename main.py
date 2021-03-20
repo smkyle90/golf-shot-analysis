@@ -5,8 +5,6 @@ import argparse
 import yaml
 from avolib.logging import ConfigureLogger, GetLogger
 
-from lib import example_function
-
 
 def main(config_file):
     """Add main docstring.
@@ -23,10 +21,6 @@ def main(config_file):
     logger.debug("Here is a sample logging statement")
 
     # Write your code here. Make sure you test along the way!
-    some_val = 4.2
-    some_str = example_function(some_val)
-
-    print(some_str)
 
 
 if __name__ == "__main__":

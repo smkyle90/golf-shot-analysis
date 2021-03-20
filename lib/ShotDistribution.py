@@ -3,13 +3,13 @@
 import json
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import scipy.stats as st
 import utm
 from matplotlib import cm
+from sklearn.cluster import KMeans
 
 from .course_data import get_course_transform
 from .Shot import Shot
@@ -27,10 +27,13 @@ class ShotDistribution:
         self.__blank_data()
         self.__course_par = {}
         self.__transform = ()
-        self.lat_lon = ()
+        self.__pin_locs = {}
+        self.name = ""
 
     def __blank_data(self):
         self.__score_dist = {
+            "year": [],
+            "player": [],
             "t_round": [],
             "hole": [],
             "stroke": [],
@@ -40,23 +43,35 @@ class ShotDistribution:
             "lat": [],
             "lon": [],
             "prox": [],
+            "flag_loc": [],
         }
 
-    def generate_distribution(self, tournament, year=None):
-        self.__blank_data()
+    def __get_tournament_id(self, id_or_name):
         with open(ROOT_DIR + "tourney-lookup.json") as f:
             tournaments = json.loads(f.read())
 
-        if str(tournament) in tournaments:
-            tourn_id = str(tournament)
+        if str(id_or_name) in tournaments:
+            tourn_id = str(id_or_name)
         else:
-            tourn_id = [k for k, v in tournaments.items() if v == tournament][0]
+            tourn_id = [k for k, v in tournaments.items() if v == id_or_name][0]
+
+        self.name = tournaments.get(tourn_id, "")
+
+        return tourn_id
+
+    def generate_distribution(self, tournament, course_points=None, year=None):
+        self.__blank_data()
+
+        tourn_id = self.__get_tournament_id(tournament)
 
         # get coordinate transform
-        self.__transform = get_course_transform(tourn_id)
+        if course_points is not None:
+            if course_points.get(tourn_id):
+                self.__transform = get_course_transform(course_points.get(tourn_id))
+            else:
+                raise ValueError("Tournament ID not in Course Points configuration.")
 
         tourn_dir = ROOT_DIR + "/tournaments/{}/".format(tourn_id)
-
         if year is None:
             add_year = []
             for file in os.listdir(tourn_dir):
@@ -90,6 +105,8 @@ class ShotDistribution:
                 with open(scard_dir + file) as f:
                     shot_data = json.loads(f.read())
 
+                pid = shot_data["p"]["id"]
+
                 for rnd in shot_data["p"]["rnds"]:
                     for hole in rnd["holes"]:
                         hole_no = int(hole["cNum"])
@@ -99,6 +116,8 @@ class ShotDistribution:
                             if float(curr_shot["x"]) and float(curr_shot["y"]):
                                 hole_data.append(
                                     Shot(
+                                        pid,
+                                        year,
                                         int(rnd["n"]),
                                         hole_no,
                                         shot_num,
@@ -115,7 +134,111 @@ class ShotDistribution:
                             all_shots.score = shot_num
                             self.__add_score(all_shots)
 
+        self.__infer_pin_locations()
+
+    def __infer_pin_locations(self):
+        shot_df = self.as_df()
+
+        years = shot_df.year.unique()
+
+        # Number of clusters is number of rounds, i.e., assume there are only this many pin positions
+        rounds = shot_df.t_round.unique()
+        rounds = [rnd for rnd in rounds if rnd <= 4]
+
+        # Number of holes
+        holes = shot_df.hole.unique()
+
+        temp_pin_locs = {
+            "year": [],
+            "t_round": [],
+            "hole": [],
+            "x_bar": [],
+            "y_bar": [],
+        }
+        # Assume hole is located at the average of someones second last shot, i.e., score-1.
+        for hole in holes:
+            for year in years:
+                for rnd in rounds:
+                    # Filter by these combinations
+                    df_filt = shot_df[
+                        (shot_df.hole == hole)
+                        & (shot_df.t_round == rnd)
+                        & (shot_df.year == year)
+                    ]
+
+                    # Get final shot for each hole. Take only valvues within 20 yards
+                    df_flag_loc = df_filt[
+                        (df_filt.stroke == (df_filt.score - 1)) & (df_filt.prox < 20)
+                    ]
+
+                    if not len(df_flag_loc):
+                        continue
+
+                    # Add to pin location history
+                    temp_pin_locs["year"].append(year)
+                    temp_pin_locs["t_round"].append(rnd)
+                    temp_pin_locs["hole"].append(hole)
+                    temp_pin_locs["x_bar"].append(df_flag_loc.x.mean())
+                    temp_pin_locs["y_bar"].append(df_flag_loc.y.mean())
+
+        # Perform clustering
+        loc_df = pd.DataFrame(temp_pin_locs)
+
+        # By hole
+        for hole in holes:
+            df_filt = loc_df[loc_df.hole == hole]
+            # Turn into array
+            all_flag_loc = np.vstack((df_filt.x_bar, df_filt.y_bar)).T
+
+            # Perform the clustering
+            k_means = KMeans(n_clusters=len(rounds))
+            k_means.fit(all_flag_loc)
+            loc_label = k_means.predict(all_flag_loc) + 1  # Always greater than zero
+
+            loc_df.loc[(loc_df.hole == hole), "loc_bar"] = loc_label.astype(int)
+
+        # Merge with all shot data based on year, round and hole.
+
+        # Reset flag locs
+        shot_df.flag_loc = -1
+
+        # Left merge the data frames
+        new_df = pd.merge(
+            shot_df,
+            loc_df,
+            how="left",
+            left_on=["year", "t_round", "hole"],
+            right_on=["year", "t_round", "hole"],
+        )
+
+        # Update loc value
+        shot_df["flag_loc"] = new_df["loc_bar"]
+
+        # Reinstantiate pin locations dictionary
+        loc_df = loc_df.drop(columns=["year", "t_round"])
+        loc_df = loc_df.drop_duplicates(subset=["hole", "loc_bar"])
+
+        if self.__transform:
+            lat_vec, lon_vec = [], []
+            for x_bar, y_bar in zip(loc_df.x_bar, loc_df.y_bar):
+                utm_x = (x_bar - self.__transform[1]) / self.__transform[0]
+                utm_y = (y_bar - self.__transform[3]) / self.__transform[2]
+                lat, lon = utm.to_latlon(utm_x, utm_y, *self.__transform[-1])
+                lat_vec.append(lat)
+                lon_vec.append(lon)
+            loc_df["lat"] = lat_vec
+            loc_df["lon"] = lon_vec
+        else:
+            loc_df["lat"] = loc_df.x_bar
+            loc_df["lon"] = loc_df.y_bar
+
+        # Update dicts
+        self.__pin_locs = loc_df.to_dict()
+        self.__score_dist = shot_df.to_dict()
+
     def __add_score(self, score):
+        self.__score_dist["player"].append(score.player)
+        self.__score_dist["year"].append(score.year)
         self.__score_dist["t_round"].append(score.t_round)
         self.__score_dist["hole"].append(score.hole)
         self.__score_dist["stroke"].append(score.stroke)
@@ -123,17 +246,50 @@ class ShotDistribution:
         self.__score_dist["x"].append(score.x)
         self.__score_dist["y"].append(score.y)
         self.__score_dist["prox"].append(score.prox)
+        self.__score_dist["flag_loc"].append(-1)
 
-        utm_x = (score.x - self.__transform[1]) / self.__transform[0]
-        utm_y = (score.y - self.__transform[3]) / self.__transform[2]
-        lat, lon = utm.to_latlon(utm_x, utm_y, *self.__transform[-1])
+        if self.__transform:
+            utm_x = (score.x - self.__transform[1]) / self.__transform[0]
+            utm_y = (score.y - self.__transform[3]) / self.__transform[2]
+            lat, lon = utm.to_latlon(utm_x, utm_y, *self.__transform[-1])
 
-        self.__score_dist["lat"].append(lat)
-        self.__score_dist["lon"].append(lon)
+            self.__score_dist["lat"].append(lat)
+            self.__score_dist["lon"].append(lon)
+        else:
+            self.__score_dist["lat"].append(score.x)
+            self.__score_dist["lon"].append(score.y)
 
-    def as_df(self, hole=None, t_round=None):
+    def as_df(self, hole=None, t_round=None, stroke=None, score=None, flag_loc=None):
 
         # Check the values we want to filter by
+
+        all_holes = self.__get_hole_list(hole)
+        all_rounds = self.__get_round_list(t_round)
+        flag_loc = self.__get_flag_loc_list(flag_loc)
+
+        # Generate the dataframe from the dictionary
+        df = pd.DataFrame(self.__score_dist)
+
+        # First stage filter for holes, round and flag location.
+        df = df[
+            df.hole.isin(all_holes)
+            & (df.t_round.isin(all_rounds))
+            & (df.flag_loc.isin(flag_loc))
+        ]
+
+        # If we have just one hole, filter by stroke and score
+        if len(all_holes) == 1:
+            stroke = self.__get_stroke_list(all_holes[0], stroke)
+            score = self.__get_score_list(all_holes[0], score)
+
+            df = df[df.stroke.isin(stroke) & (df.score.isin(score))]
+
+        return df
+
+    def __get_hole_par(self, hole):
+        return list(self.__course_par.values())[0].get(hole)
+
+    def __get_round_list(self, t_round):
         # ROUND
         if (t_round is None) or (
             (isinstance(t_round, str)) and (t_round.lower() == "all")
@@ -144,6 +300,9 @@ class ShotDistribution:
         else:
             raise TypeError("Round must be None, 'all', or a specific int value.")
 
+        return list(all_rounds)
+
+    def __get_hole_list(self, hole):
         # HOLE
         if (hole is None) or ((isinstance(hole, str)) and (hole.lower() == "all")):
             all_holes = set(self.__score_dist["hole"])
@@ -152,17 +311,13 @@ class ShotDistribution:
         else:
             raise TypeError("Hole must be None, 'all', or a specific int value.")
 
-        # Generate the dataframe from the dictionary
-        df = pd.DataFrame(self.__score_dist)
+        return list(all_holes)
 
-        # Filtered DataFrame
-        return df[df.hole.isin(all_holes) & (df.t_round.isin(all_rounds))]
+    def __get_stroke_list(self, hole, stroke):
+        par = self.__get_hole_par(hole)
+        if stroke is None:
+            stroke = "all"
 
-    def get_hole_par(self, hole):
-        return list(self.__course_par.values())[0].get(hole)
-
-    def get_stroke_list(self, hole, stroke):
-        par = self.get_hole_par(hole)
         if isinstance(stroke, int):
             stroke = [stroke]
         elif isinstance(stroke, str):
@@ -185,11 +340,28 @@ class ShotDistribution:
 
         return stroke
 
-    def get_score_list(self, hole, score):
-        par = self.get_hole_par(hole)
+    def __get_flag_loc_list(self, flag_loc):
+        if isinstance(flag_loc, int):
+            flag_loc = [flag_loc]
+        elif isinstance(flag_loc, str):
+            if (flag_loc.lower() == "all") or (flag_loc.lower() == "a"):
+                flag_loc = [-1, 1, 2, 3, 4]
+            else:
+                raise ValueError("Must specify 'all' ('a').")
+        elif flag_loc is None:
+            flag_loc = [-1, 1, 2, 3, 4]
+        else:
+            raise TypeError(
+                "Flag location value must be a specific integer value, or 'all' or None."
+            )
+
+        return flag_loc
+
+    def __get_score_list(self, hole, score):
+        par = self.__get_hole_par(hole)
 
         if score is None:
-            return [i for i in range(1, 2 * par)]
+            score = "all"
 
         if isinstance(score, str):
             if score.lower() == "sub":
@@ -209,7 +381,9 @@ class ShotDistribution:
 
         return score
 
-    def hole_distribution(self, hole, stroke, score, t_round=None, N=100, lat_lon=True):
+    def hole_distribution(
+        self, hole, stroke, score, t_round=None, flag_loc=None, N=100, lat_lon=True
+    ):
         """Get the distribution of shots for a hole for a specific score
         on a hole. This shows the areas where certain scores are made,
         but can also be lumped in sub-, even-, or over-par scores.
@@ -221,27 +395,18 @@ class ShotDistribution:
         position to leave a shot, that maximizes the chance of making that score.
 
         """
-        par = self.get_hole_par(hole)
-        stroke = self.get_stroke_list(hole, stroke)
-        score = self.get_score_list(hole, score)
-
         # Generate dataframe
-        score_df = self.as_df(hole, t_round)
+        score_df = self.as_df(hole, t_round, stroke, score, flag_loc)
 
-        # Filter the dataframe as per our conditions
-        df_filt = score_df[
-            (score_df.score.isin(score)) & (score_df.stroke.isin(stroke))
-        ]
-
-        if len(df_filt) < 3:
+        if len(score_df) < 3:
             return None, None, None
 
         if lat_lon:
-            x_vec = df_filt.lat
-            y_vec = df_filt.lon
+            x_vec = score_df.lat
+            y_vec = score_df.lon
         else:
-            x_vec = df_filt.x
-            y_vec = df_filt.y
+            x_vec = score_df.x
+            y_vec = score_df.y
 
         x_min = x_vec.min()
         x_max = x_vec.max()
@@ -263,33 +428,28 @@ class ShotDistribution:
 
         return X, Y, f
 
-    def shot_distribution(self, hole, stroke, score, t_round=None, lat_lon=True):
+    def shot_distribution(
+        self, hole, stroke, score, t_round=None, flag_loc=None, lat_lon=True
+    ):
         """Get the mean and covariance of a specific stroke on a hole
         that leads to a specific score.
         """
-        score_df = self.as_df(hole, t_round)
-
-        score = self.get_score_list(hole, score)
-        stroke = self.get_stroke_list(hole, stroke)
-
-        df_filt = score_df[
-            (score_df.score.isin(score)) & (score_df.stroke.isin(stroke))
-        ]
+        shot_df = self.as_df(hole, t_round, stroke, score, flag_loc)
 
         if lat_lon:
-            x_vec = df_filt.lat
-            y_vec = df_filt.lon
+            x_vec = shot_df.lat
+            y_vec = shot_df.lon
         else:
-            x_vec = df_filt.x
-            y_vec = df_filt.y
+            x_vec = shot_df.x
+            y_vec = shot_df.y
 
-        if not len(df_filt):
+        if not len(shot_df):
             return None
         else:
             pos = np.vstack((x_vec, y_vec)).T
             mu = np.mean(pos, axis=0)
 
-            if len(df_filt) < 2:
+            if len(shot_df) < 2:
                 cov = np.eye(2)
             else:
                 v = (np.array(pos) - mu) / (len(pos) - 1)
@@ -299,55 +459,73 @@ class ShotDistribution:
 
         return (mu, cov, e_val, e_vec)
 
-    def hole_data(self, hole, stroke, score, t_round=None):
+    def hole_data(self, hole, stroke, score, t_round=None, flag_loc=None):
 
-        stroke = self.get_stroke_list(hole, stroke)
-        score = self.get_score_list(hole, score)
+        shot_df = self.as_df(hole, t_round, stroke, score, flag_loc)
 
-        score_df = self.as_df(hole=hole, t_round=t_round)
-        score_df = score_df[
-            (score_df.stroke.isin(stroke)) & (score_df.stroke.isin(score))
-        ]
+        return shot_df
 
-        return score_df
+    def plot_flag_loc(self, ax, hole, plotly=True):
 
-    def plot_hole(self, ax, hole, stroke, score, t_round=None, plotly=True):
+        flag_df = pd.DataFrame(self.__pin_locs)
+        hole_df = flag_df[flag_df.hole == hole]
+
+        if plotly:
+            ax.add_trace(
+                go.Scattermapbox(
+                    lat=hole_df.lat,
+                    lon=hole_df.lon,
+                    marker=go.scattermapbox.Marker(size=10, color="black",),
+                    showlegend=False,
+                    hoverinfo=hole_df.loc_bar,
+                )
+            )
+        else:
+            ax.scatter(
+                hole_df.x_bar, hole_df.y_bar, c="k",
+            )
+
+            for x, y, loc in zip(hole_df.x_bar, hole_df.y_bar, hole_df.loc_bar):
+                ax.text(x + 2, y + 2, "{}".format(int(loc)), c="k")
+
+        return ax
+
+    def plot_hole(
+        self, ax, hole, stroke, score, t_round=None, flag_loc=None, plotly=True
+    ):
         """if hole is None, we plot all. Else we just plot the specific hole
         we care about.
         """
         par = list(self.__course_par.values())[0].get(hole)
 
-        score_df = self.hole_data(hole, stroke, score, t_round=t_round)
+        score_df = self.hole_data(
+            hole, stroke, score, t_round=t_round, flag_loc=flag_loc
+        )
 
         all_scores = score_df.score.unique()
-        all_rounds = score_df.t_round.unique()
-
-        # hole_cols = cm.rainbow(np.linspace(0, 1, 18))
-        round_cols = cm.rainbow(np.linspace(0, 1, 4))
 
         for score in all_scores:
             c = self.color_palette(int(score), par)
-            for t_round in all_rounds:
-                r = round_cols[t_round - 1][:-1]
-                df_filt = score_df[
-                    (score_df.score == score) & (score_df.t_round == t_round)
-                ]
-                if plotly:
-                    ax.add_trace(
-                        go.Scattermapbox(
-                            lat=df_filt.lat,
-                            lon=df_filt.lon,
-                            marker=go.scattermapbox.Marker(
-                                size=10, color=c["plotly"].lower()[:-1], opacity=0.7
-                            ),
-                            showlegend=False,
-                        )
+            df_filt = score_df[
+                (score_df.score == score)  # & (score_df.t_round == t_round)
+            ]
+            if plotly:
+                ax.add_trace(
+                    go.Scattermapbox(
+                        lat=df_filt.lat,
+                        lon=df_filt.lon,
+                        marker=go.scattermapbox.Marker(
+                            size=10, color=c["plotly"].lower()[:-1], opacity=0.7
+                        ),
+                        showlegend=False,
+                        hoverinfo=df_filt.stroke,
                     )
-                else:
-                    ax.plot(
-                        df_filt.x, df_filt.y, "o", color=r, alpha=0.05, markersize=10
-                    )
-                    ax.plot(df_filt.x, df_filt.y, ".", color=c["col"], alpha=0.3)
+                )
+            else:
+                # ax.plot(
+                #     df_filt.x, df_filt.y, "o", color=r, alpha=0.05, markersize=10
+                # )
+                ax.plot(df_filt.x, df_filt.y, ".", color=c["col"], alpha=0.3)
 
         if plotly:
             ax.layout.mapbox.center["lat"] = score_df.lat.mean()
@@ -356,14 +534,16 @@ class ShotDistribution:
         return ax
 
     def plot_hole_distribution(
-        self, ax, hole, stroke, score, t_round=None, N=100, plotly=True
+        self, ax, hole, stroke, score, t_round=None, flag_loc=None, N=100, plotly=True
     ):
 
         par = list(self.__course_par.values())[0].get(hole)
 
         color_map = self.color_palette(score, par)
 
-        X, Y, f = self.hole_distribution(hole, stroke, score, t_round, N, plotly)
+        X, Y, f = self.hole_distribution(
+            hole, stroke, score, t_round, flag_loc, N, plotly
+        )
         if f is not None:
             if plotly:
                 ax.add_trace(
@@ -375,6 +555,7 @@ class ShotDistribution:
                         radius=20,
                         showlegend=False,
                         showscale=False,
+                        hoverinfo="skip",
                     )
                 )
             else:
@@ -383,19 +564,21 @@ class ShotDistribution:
         return ax
 
     def plot_shot_distribution(
-        self, ax, hole, stroke, score, t_round=None, plotly=True
+        self, ax, hole, stroke, score, t_round=None, flag_loc=None, plotly=True
     ):
 
         par = list(self.__course_par.values())[0].get(hole)
 
         color_map = self.color_palette(score, par)
 
-        shot_dist_out = self.shot_distribution(hole, stroke, score, t_round, plotly)
+        shot_dist_out = self.shot_distribution(
+            hole, stroke, score, t_round, flag_loc, plotly
+        )
 
         if shot_dist_out is None:
             return ax
 
-        mu, cov, e_val, e_vec = shot_dist_out
+        mu, _cov, e_val, e_vec = shot_dist_out
 
         for (val, vec) in zip(e_val, e_vec):
             for i in [-1, 1]:
@@ -433,3 +616,15 @@ class ShotDistribution:
             color_map = {"cmap": cm.Greys, "col": "k", "plotly": "Greys"}
 
         return color_map
+
+    def calibrate_green_loc(self, holes):
+        green_locs = {}
+        pin_df = pd.DataFrame(self.__pin_locs)
+
+        for hole in holes:
+            green_locs[hole] = (
+                pin_df[pin_df.hole == hole].x_bar.mean(),
+                pin_df[pin_df.hole == hole].y_bar.mean(),
+            )
+
+        return green_locs
