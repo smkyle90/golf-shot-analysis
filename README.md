@@ -52,6 +52,13 @@ For now, use the docker-compose file to spin up the application and the nginx se
 
 For development, simply run `make run` and the development environment will start.
 
+
+### Calibration
+
+In order to use the map plots, i.e., overlay shots on the course map, the user must add latitude and longitude information for 3 or more locations on the golf course.
+
+It is recommended to use the centre of a green, and then use the method `calibrate_green_loc` from `ShotDistribution`. Pass in a list of greens that you want the average ShotLink coordiante for. Add this information to `configs/course_coords.yml`. Add by the appropriate tournament ID (NOT COURSE ID).
+
 ## Contributing
 The guidelines for contributing are laid out here.
 

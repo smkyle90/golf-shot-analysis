@@ -477,7 +477,7 @@ class ShotDistribution:
                     lon=hole_df.lon,
                     marker=go.scattermapbox.Marker(size=10, color="black",),
                     showlegend=False,
-                    hoverinfo=hole_df.loc_bar,
+                    # hoverinfo=hole_df.loc_bar,
                 )
             )
         else:
@@ -518,7 +518,7 @@ class ShotDistribution:
                             size=10, color=c["plotly"].lower()[:-1], opacity=0.7
                         ),
                         showlegend=False,
-                        hoverinfo=df_filt.stroke,
+                        # hoverinfo=df_filt.stroke,
                     )
                 )
             else:

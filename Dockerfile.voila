@@ -23,6 +23,8 @@ COPY . /app/
 # Set the working directory to /app
 WORKDIR /app
 
+RUN jupyter trust main.ipynb
+
 # Default arguments for your app
 CMD ["voila", \
 	"--enable_nbextensions=True", \
