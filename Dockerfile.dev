@@ -23,7 +23,7 @@ COPY . /app/
 # Set the working directory to /app
 WORKDIR /app
 
-RUN jupyter trust main.ipynb
+RUN jupyter trust ShotAnalysis.ipynb
 
 # Default arguments for your app
 CMD ["/bin/bash"]

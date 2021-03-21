@@ -23,7 +23,7 @@ COPY . /app/
 # Set the working directory to /app
 WORKDIR /app
 
-RUN jupyter trust main.ipynb
+RUN jupyter trust ShotAnalysis.ipynb
 
 # Default arguments for your app
 CMD ["voila", \
@@ -32,4 +32,4 @@ CMD ["voila", \
 	"--no-browser", \
 	"--MappingKernelManager.cull_interval=60", \
 	"--MappingKernelManager.cull_idle_timeout=120", \
-	"main.ipynb"]
+	"ShotAnalysis.ipynb"]

@@ -37,3 +37,4 @@ workspace/*
 !requirements.txt
 !.placeholder
 !main.ipynb
+!ShotAnalysis.ipynb

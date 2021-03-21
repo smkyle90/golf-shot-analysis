@@ -156,6 +156,9 @@ class ShotDistribution:
             "y_bar": [],
         }
         # Assume hole is located at the average of someones second last shot, i.e., score-1.
+        # The only thing we know is that a pin is in the same location in the same year and round.
+        # So we take the average of this location, for as many rounds as we have then cluster these locations.
+        # This is so we don't mis-classify a year-round combination.
         for hole in holes:
             for year in years:
                 for rnd in rounds:
@@ -166,7 +169,7 @@ class ShotDistribution:
                         & (shot_df.year == year)
                     ]
 
-                    # Get final shot for each hole. Take only valvues within 20 yards
+                    # Get final shot for each hole. Take only values within 20 yards
                     df_flag_loc = df_filt[
                         (df_filt.stroke == (df_filt.score - 1)) & (df_filt.prox < 20)
                     ]
@@ -262,7 +265,6 @@ class ShotDistribution:
     def as_df(self, hole=None, t_round=None, stroke=None, score=None, flag_loc=None):
 
         # Check the values we want to filter by
-
         all_holes = self.__get_hole_list(hole)
         all_rounds = self.__get_round_list(t_round)
         flag_loc = self.__get_flag_loc_list(flag_loc)
@@ -477,7 +479,6 @@ class ShotDistribution:
                     lon=hole_df.lon,
                     marker=go.scattermapbox.Marker(size=10, color="black",),
                     showlegend=False,
-                    # hoverinfo=hole_df.loc_bar,
                 )
             )
         else:
@@ -518,7 +519,7 @@ class ShotDistribution:
                             size=10, color=c["plotly"].lower()[:-1], opacity=0.7
                         ),
                         showlegend=False,
-                        # hoverinfo=df_filt.stroke,
+                        hoverinfo="skip",
                     )
                 )
             else:
@@ -592,6 +593,7 @@ class ShotDistribution:
                             mode="lines",
                             line=dict(color=color_map["plotly"].lower()[:-1], width=2,),
                             showlegend=False,
+                            hoverinfo="skip",
                         )
                     )
                 else:
