@@ -31,21 +31,21 @@ For this repository to function as intended, a few tools have been provided to e
 
 The content of the `Makefile` should only be modified if the standard behaviour is not achieved using the default. Standard commands are as follows:
 
-| Command | Dependencies | Action |
-----------------------|---|---|---
-`make run` | `run` | Runs image for local development |
-`make build` | `build` | Builds image |
-`docker-compose up --build` | `docker-compose.yaml` | Builds and deploys images to run on designated server |
+| Command | Dependencies | Action
+----------------------|---|---
+`make run` | `run` | Runs image for local development
+`make build` | `build` | Builds image
+`docker-compose up --build` | `docker-compose.yaml` | Builds and deploys images to run on designated server
 
 
 ### Scripts
 
 The `scripts` folder must maintain the following, which are indirectly run from the Makefile in the root directory. The `build` script is customizable per the  application, but it must build a local image of the application which can be uploaded the container repository for use in the cluster pipeline. The `run` script is utilised for local development.
 
-| Script   | Inputs |Output|
+| Script   | Inputs |Output
 |----------|------ |---
-| build.sh  | NAME TAG | Application image is created locally, tagged with input args |
-| run.sh    | NAME TAG | Application image is run locally |
+| build.sh  | NAME TAG | Application image is created locally, tagged with input args
+| run.sh    | NAME TAG | Application image is run locally
 
 ### Development or Production
 
