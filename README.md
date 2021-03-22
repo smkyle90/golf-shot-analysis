@@ -65,6 +65,7 @@ The guidelines for contributing are laid out here.
 
 ### Development Environment
 - Install [Docker](https://docs.docker.com/install/linux/docker-ce/ubuntu/) for creating a nice virtual container to run in.
+- Install [Docker Compose](https://docs.docker.com/compose/).
 - See [Running](#Running).
 
 ### Testing
