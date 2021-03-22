@@ -31,19 +31,20 @@ For this repository to function as intended, a few tools have been provided to e
 
 The content of the `Makefile` should only be modified if the standard behaviour is not achieved using the default. Standard commands are as follows:
 
-| Command | Dependencies | Action | Image Tag (local and remote)
+| Command | Dependencies | Action |
 ----------------------|---|---|---
-`make run` | `run` | Runs image | Git commit's tag, otherwise `latest`
-`make build` | `build` | Builds image | `custom_tag`
+`make run` | `run` | Runs image for local development |
+`make build` | `build` | Builds image |
+`docker-compose up --build` | `docker-compose.yaml` | Builds and deploys images to run on designated server |
+
 
 ### Scripts
 
-The `scripts` folder must maintain the following, which are indirectly run from the Makefile in the root directory. The `build` script is customizable per the  application, but it must build a local image of the application which can be uploaded the container repository for use in the cluster pipeline. The `upload` script **should not be modified**. The `run` script is listed as an empty placeholder script, and commented code is included in the Makefile to show how to integrate a `run` script into the code repository. The operation of the `run` scripts are application specific and do not need to share common functionality at this time.
+The `scripts` folder must maintain the following, which are indirectly run from the Makefile in the root directory. The `build` script is customizable per the  application, but it must build a local image of the application which can be uploaded the container repository for use in the cluster pipeline. The `run` script is utilised for local development.
 
 | Script   | Inputs |Output|
 |----------|------ |---
 | build.sh  | NAME TAG | Application image is created locally, tagged with input args |
-| upload.sh | NAME TAG | Application image is uploaded to container repository, tagged with input args |
 | run.sh    | NAME TAG | Application image is run locally |
 
 ### Development or Production
