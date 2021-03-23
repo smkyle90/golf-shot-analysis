@@ -621,6 +621,9 @@ class ShotDistribution:
             hole, stroke, score=None, t_round=t_round, flag_loc=flag_loc
         )
 
+        x_lim = ax.get_xlim()
+        y_lim = ax.get_ylim()
+
         for score in ["sub", "par", "over"]:
             col = self.color_palette(score, par)
             score_vals = self.__get_score_list(hole, score)
@@ -631,13 +634,17 @@ class ShotDistribution:
             rad = df_filt.prox.mean() + 2 * df_filt.prox.std()
 
             if plotly:
-                pass
+                return ax
                 # TODO: add this
             else:
                 circle = plt.Circle(
                     (x0, y0), rad, color=col["col"], fill=False, alpha=0.5
                 )
                 ax.add_patch(circle)
+
+        if not plotly:
+            ax.set_xlim(x_lim)
+            ax.set_ylim(y_lim)
 
         return ax
 
