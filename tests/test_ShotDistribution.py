@@ -83,6 +83,9 @@ def test_ShotDistribution(course_points):
         ax = s.plot_shot_distribution(
             ax, 3, stroke, par - 1, t_round, flag_loc=None, plotly=use_plotly
         )
+        ax = s.plot_shot_proximity(
+            ax, 3, stroke, par - 1, t_round, flag_loc=None, plotly=use_plotly
+        )
         ax = s.plot_shot_distribution(
             ax, 3, stroke, par, t_round, flag_loc=None, plotly=use_plotly
         )

@@ -51,7 +51,7 @@ The `scripts` folder must maintain the following, which are indirectly run from 
 
 For now, use the docker-compose file to spin up the application and the nginx server. Run `docker-compose up --build`. The application is available at `localhost`, `127.0.0.1` on the local machine, or the IP address of the machine, if accessed from another computer on the network. `nginx.conf` needs to be configured appropriately.
 
-For development, simply run `make run` and the development environment will start.
+For development, simply run `make run` and the development environment will start. To edit or run the notebook run `jupyter notebook --allow-root`. This will provide a link that you can copy into your browser.
 
 
 ### Calibration

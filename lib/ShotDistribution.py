@@ -3,6 +3,7 @@
 import json
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -598,6 +599,45 @@ class ShotDistribution:
                     )
                 else:
                     ax.plot(x0, y0, color_map["col"], alpha=0.5)
+
+        return ax
+
+    def plot_shot_proximity(
+        self, ax, hole, stroke, score, t_round=None, flag_loc=None, plotly=True
+    ):
+
+        par = list(self.__course_par.values())[0].get(hole)
+
+        flag_df = pd.DataFrame(self.__pin_locs)
+        flags = self.__get_flag_loc_list(flag_loc)
+        hole_df = flag_df[(flag_df.hole == hole) & flag_df.loc_bar.isin(flags)]
+
+        # Hole loc
+        x0 = hole_df.x_bar.mean()
+        y0 = hole_df.y_bar.mean()
+
+        # Hard code to get all scoring data for hole
+        score_df = self.hole_data(
+            hole, stroke, score=None, t_round=t_round, flag_loc=flag_loc
+        )
+
+        for score in ["sub", "par", "over"]:
+            col = self.color_palette(score, par)
+            score_vals = self.__get_score_list(hole, score)
+
+            df_filt = score_df[score_df.score.isin(score_vals)]
+
+            # 95% confidence circle of score within that distance
+            rad = df_filt.prox.mean() + 2 * df_filt.prox.std()
+
+            if plotly:
+                pass
+                # TODO: add this
+            else:
+                circle = plt.Circle(
+                    (x0, y0), rad, color=col["col"], fill=False, alpha=0.5
+                )
+                ax.add_patch(circle)
 
         return ax
 
