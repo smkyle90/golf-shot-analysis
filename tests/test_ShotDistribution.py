@@ -125,6 +125,9 @@ def test_ShotDistribution(course_points):
         ax = s.plot_shot_distribution(
             ax, 18, 2, 1, t_round, flag_loc=None, plotly=use_plotly
         )
-
-        # ax.axis('equal')
-        # plt.show()
+        hole = 6
+        flag_loc = "all"
+        s.set_base_df(hole, flag_loc)
+        ax = s.plot_shot_distribution(
+            ax, hole, 2, 1, t_round, flag_loc=flag_loc, plotly=use_plotly
+        )
