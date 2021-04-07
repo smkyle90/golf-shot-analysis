@@ -22,6 +22,8 @@
 .coverage
 htmlcov
 data*
+certbot*
+
 # Jupyter artifacts
 .ipynb*
 
