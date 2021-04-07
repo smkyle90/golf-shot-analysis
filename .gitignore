@@ -21,7 +21,7 @@
 .pytest_cache
 .coverage
 htmlcov
-
+data*
 # Jupyter artifacts
 .ipynb*
 
