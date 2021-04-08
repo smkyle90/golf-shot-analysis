@@ -70,7 +70,7 @@ class ShotDistribution:
         else:
             try:
                 tourn_id = [k for k, v in tournaments.items() if v == id_or_name][0]
-            except Exception as e:
+            except Exception:
                 tourn_id = "002"
 
         self.name = tournaments.get(tourn_id, tourn_id)
