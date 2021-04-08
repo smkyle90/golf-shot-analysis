@@ -68,7 +68,10 @@ class ShotDistribution:
         if str(id_or_name) in tournaments:
             tourn_id = str(id_or_name)
         else:
-            tourn_id = [k for k, v in tournaments.items() if v == id_or_name][0]
+            try:
+                tourn_id = [k for k, v in tournaments.items() if v == id_or_name][0]
+            except Exception as e:
+                tourn_id = "002"
 
         self.name = tournaments.get(tourn_id, tourn_id)
         self.tid = tourn_id
